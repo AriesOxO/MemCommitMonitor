@@ -25,7 +25,7 @@ public partial class MacDialog : Window
         YesNoCancel
     }
 
-    public bool? DialogResult { get; private set; }
+    public new bool? DialogResult { get; private set; }
 
     public MacDialog(string title, string content, DialogIcon icon = DialogIcon.Info, DialogButton buttons = DialogButton.OK)
     {
