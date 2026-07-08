@@ -56,6 +56,12 @@ public class ProcessMemoryInfo : INotifyPropertyChanged
     /// <summary>是否为受保护的系统进程</summary>
     public bool IsProtected { get; set; }
 
+    /// <summary>进程类型（用于分类和建议）</summary>
+    public string ProcessType { get; set; } = "未知";
+
+    /// <summary>是否建议关闭（基于进程类型和内存占用）</summary>
+    public bool SuggestClose { get; set; }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

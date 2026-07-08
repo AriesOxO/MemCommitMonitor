@@ -22,6 +22,36 @@ public class ProcessAnalyzer
     };
 
     /// <summary>
+    /// 常见浏览器进程
+    /// </summary>
+    private static readonly HashSet<string> BrowserProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "chrome", "firefox", "msedge", "opera", "brave", "vivaldi"
+    };
+
+    /// <summary>
+    /// 常见开发工具进程
+    /// </summary>
+    private static readonly HashSet<string> DevelopmentProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "devenv", "code", "rider", "idea64", "webstorm64", "pycharm64",
+        "VisualStudio", "msbuild", "dotnet"
+    };
+
+    /// <summary>
+    /// 常见办公软件进程
+    /// </summary>
+    private static readonly HashSet<string> OfficeProcesses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WINWORD", "EXCEL", "POWERPNT", "OUTLOOK", "AcroRd32", "Acrobat"
+    };
+
+    /// <summary>
+    /// 最小建议关闭内存阈值（MB）
+    /// </summary>
+    private const long SuggestCloseThresholdMB = 500;
+
+    /// <summary>
     /// 获取所有进程的内存信息，按已提交内存排序
     /// </summary>
     public List<ProcessMemoryInfo> GetProcessMemoryInfos()
@@ -39,8 +69,13 @@ public class ProcessAnalyzer
                     ProcessName = process.ProcessName,
                     PrivateBytes = process.PrivateMemorySize64,
                     WorkingSet = process.WorkingSet64,
-                    IsProtected = IsProtectedProcess(process.ProcessName)
+                    IsProtected = IsProtectedProcess(process.ProcessName),
+                    ProcessType = GetProcessType(process.ProcessName)
                 };
+
+                // 判断是否建议关闭（非系统进程 且 内存占用 > 500 MB）
+                long privateMB = info.PrivateBytes / 1024 / 1024;
+                info.SuggestClose = !info.IsProtected && privateMB > SuggestCloseThresholdMB;
 
                 result.Add(info);
             }
@@ -64,5 +99,25 @@ public class ProcessAnalyzer
     public static bool IsProtectedProcess(string processName)
     {
         return ProtectedProcesses.Contains(processName);
+    }
+
+    /// <summary>
+    /// 获取进程类型
+    /// </summary>
+    private static string GetProcessType(string processName)
+    {
+        if (ProtectedProcesses.Contains(processName))
+            return "系统进程";
+
+        if (BrowserProcesses.Any(b => processName.Contains(b, StringComparison.OrdinalIgnoreCase)))
+            return "浏览器";
+
+        if (DevelopmentProcesses.Any(d => processName.Contains(d, StringComparison.OrdinalIgnoreCase)))
+            return "开发工具";
+
+        if (OfficeProcesses.Any(o => processName.Contains(o, StringComparison.OrdinalIgnoreCase)))
+            return "办公软件";
+
+        return "用户程序";
     }
 }

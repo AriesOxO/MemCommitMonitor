@@ -64,10 +64,18 @@
                     Style="{StaticResource ActionButtonStyle}"
                     Click="RefreshButton_Click"/>
             <Button x:Name="ReleaseButton"
-                    Content="💾 释放选中进程"
+                    Content="💾 释放工作集"
                     Style="{StaticResource ActionButtonStyle}"
                     Click="ReleaseButton_Click"
-                    IsEnabled="False"/>
+                    IsEnabled="False"
+                    ToolTip="释放物理内存（不减少已提交内存）"/>
+            <Button x:Name="TerminateButton"
+                    Content="⚠️ 终止进程"
+                    Style="{StaticResource ActionButtonStyle}"
+                    Click="TerminateButton_Click"
+                    IsEnabled="False"
+                    Background="#FFE57373"
+                    ToolTip="终止进程（真正释放已提交内存，会丢失数据）"/>
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        Margin="15,0,0,0"
@@ -96,15 +104,18 @@
                                         Width="80"/>
                     <DataGridTextColumn Header="进程名称"
                                         Binding="{Binding ProcessName}"
-                                        Width="*"/>
+                                        Width="150"/>
+                    <DataGridTextColumn Header="类型"
+                                        Binding="{Binding ProcessType}"
+                                        Width="100"/>
                     <DataGridTextColumn Header="已提交内存"
                                         Binding="{Binding FormattedPrivate}"
                                         Width="120"/>
                     <DataGridTextColumn Header="工作集（物理内存）"
                                         Binding="{Binding FormattedWorkingSet}"
-                                        Width="150"/>
+                                        Width="140"/>
                     <DataGridTextColumn Header="状态"
-                                        Width="100">
+                                        Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Text" Value="正常"/>
@@ -113,6 +124,10 @@
                                         <Setter Property="Text" Value="🔒 受保护"/>
                                         <Setter Property="Foreground" Value="Red"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SuggestClose}" Value="True">
+                                        <Setter Property="Text" Value="💡 建议关闭"/>
+                                        <Setter Property="Foreground" Value="Orange"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
