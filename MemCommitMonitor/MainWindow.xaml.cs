@@ -1,6 +1,7 @@
 using MemCommitMonitor.Core;
 using MemCommitMonitor.Models;
 using MemCommitMonitor.Dialogs;
+using MemCommitMonitor.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,11 +17,15 @@ public partial class MainWindow : Window
     private readonly MemoryReleaser _memoryReleaser;
     private readonly MemoryScanner _memoryScanner;
     private readonly ExperimentalMemoryReleaser _experimentalReleaser;
+    private readonly ILoggerService _logger;
     private List<ProcessMemoryInfo> _processes = new();
 
     public MainWindow()
     {
         InitializeComponent();
+
+        _logger = AppLogger.Instance;
+        _logger.Info("主窗口初始化开始");
 
         _memoryMonitor = new MemoryMonitor();
         _processAnalyzer = new ProcessAnalyzer();
@@ -30,6 +35,8 @@ public partial class MainWindow : Window
 
         // 启动时自动加载数据
         LoadData();
+
+        _logger.Info("主窗口初始化完成");
     }
 
     /// <summary>
@@ -39,15 +46,18 @@ public partial class MainWindow : Window
     {
         try
         {
+            _logger.Debug("开始加载数据");
             StatusText.Text = "正在加载数据...";
             StatusText.Foreground = System.Windows.Media.Brushes.Blue;
 
             // 加载系统内存信息
             var sysInfo = _memoryMonitor.GetSystemMemoryInfo();
             UpdateSystemMemoryDisplay(sysInfo);
+            _logger.Debug($"系统内存: 已提交 {sysInfo.TotalCommitted / 1024 / 1024 / 1024:F2} GB");
 
             // 加载进程列表
             _processes = _processAnalyzer.GetProcessMemoryInfos();
+            _logger.Debug($"加载了 {_processes.Count} 个进程");
 
             // 应用过滤和排序
             ApplyFilterAndSort();
@@ -55,13 +65,16 @@ public partial class MainWindow : Window
             StatusText.Text = $"✓ 已加载 {ProcessDataGrid.Items.Count} 个进程（总计 {_processes.Count}）";
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             LastUpdateText.Text = $"最后更新: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+
+            _logger.Info($"数据加载成功，显示 {ProcessDataGrid.Items.Count}/{_processes.Count} 个进程");
         }
         catch (Exception ex)
         {
+            _logger.Error("加载数据失败", ex);
             StatusText.Text = $"✗ 加载失败: {ex.Message}";
             StatusText.Foreground = System.Windows.Media.Brushes.Red;
-            MessageBox.Show($"加载数据时出错:\n{ex.Message}", "错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MacDialog.Show("加载失败", $"加载数据时出错:\n{ex.Message}",
+                MacDialog.DialogIcon.Error, MacDialog.DialogButton.OK, this);
         }
     }
 
