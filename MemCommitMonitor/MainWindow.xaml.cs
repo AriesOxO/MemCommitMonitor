@@ -1,5 +1,6 @@
 using MemCommitMonitor.Core;
 using MemCommitMonitor.Models;
+using MemCommitMonitor.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -514,7 +515,7 @@ public partial class MainWindow : Window
     {
         if (ProcessDataGrid.SelectedItem is not ProcessMemoryInfo selectedProcess)
         {
-            MessageBox.Show("请先选择一个进程", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            MacDialog.Show("提示", "请先选择一个进程", MacDialog.DialogIcon.Info, MacDialog.DialogButton.OK, this);
             return;
         }
 
@@ -523,58 +524,14 @@ public partial class MainWindow : Window
             // 扫描内存获取详细信息
             var scanResult = _memoryScanner.ScanProcessMemory(selectedProcess.ProcessId);
 
-            var details = $"进程详细信息\n\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"基本信息\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"进程名称: {selectedProcess.ProcessName}\n" +
-                $"进程 ID: {selectedProcess.ProcessId}\n" +
-                $"进程类型: {selectedProcess.ProcessType}\n" +
-                $"保护状态: {(selectedProcess.IsProtected ? "🔒 系统保护进程" : "✓ 可操作")}\n" +
-                $"建议关闭: {(selectedProcess.SuggestClose ? "是（内存占用高）" : "否")}\n\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"内存使用\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"已提交内存: {selectedProcess.FormattedPrivate}\n" +
-                $"工作集（物理）: {selectedProcess.FormattedWorkingSet}\n\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"内存布局分析\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"内存区域数: {scanResult.Regions.Count}\n" +
-                $"已提交总量: {FormatBytes(scanResult.TotalCommitted)}\n\n" +
-                $"可释放评估（VirtualFreeEx）:\n" +
-                $"• 低风险: {FormatBytes(scanResult.SafeToRelease)}\n" +
-                $"• 中风险: {FormatBytes(scanResult.RiskyToRelease)}\n" +
-                $"• 高风险: {FormatBytes(scanResult.TotalCommitted - scanResult.SafeToRelease - scanResult.RiskyToRelease)}\n\n" +
-                $"扫描耗时: {scanResult.ScanTimeMs} ms\n\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n" +
-                $"操作建议\n" +
-                $"━━━━━━━━━━━━━━━━━━━━\n";
-
-            if (selectedProcess.IsProtected)
-            {
-                details += "⚠️ 这是系统关键进程，不建议进行任何操作。";
-            }
-            else if (scanResult.SafeToRelease > 0)
-            {
-                details += $"✓ 可以尝试实验性释放（保守模式）\n预计释放: {FormatBytes(scanResult.SafeToRelease)}";
-            }
-            else if (selectedProcess.SuggestClose)
-            {
-                details += "💡 建议终止此进程以释放内存\n（记得先保存数据）";
-            }
-            else
-            {
-                details += "✓ 可以尝试释放工作集\n（不会减少已提交内存）";
-            }
-
-            MessageBox.Show(details, $"进程详情 - {selectedProcess.ProcessName}",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            // 使用自定义详情对话框
+            var detailsDialog = new ProcessDetailsDialog(selectedProcess, scanResult);
+            detailsDialog.Owner = this;
+            detailsDialog.ShowDialog();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"获取进程详情失败:\n{ex.Message}", "错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MacDialog.Show("错误", $"获取进程详情失败:\n{ex.Message}", MacDialog.DialogIcon.Error, MacDialog.DialogButton.OK, this);
         }
     }
 
