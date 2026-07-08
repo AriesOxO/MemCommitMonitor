@@ -93,8 +93,6 @@ public partial class MainWindow : Window
         TerminateButton.IsEnabled = hasSelection;
         ExperimentalReleaseButton.IsEnabled = hasSelection;
     }
-        TerminateButton.IsEnabled = hasSelection;
-    }
 
     /// <summary>
     /// 释放按钮点击事件
@@ -300,7 +298,7 @@ public partial class MainWindow : Window
             "• 成功率很低（10-30%）\n" +
             "• 即使成功，释放量也可能很少\n\n" +
             "此功能仅供研究和学习使用。\n" +
-            "如果需要可靠释放内存，请使用"终止进程"功能。\n\n" +
+            "如果需要可靠释放内存，请使用\"终止进程\"功能。\n\n" +
             "是否继续？",
             "⚠️ 实验性功能警告",
             MessageBoxButton.YesNo,
@@ -431,7 +429,7 @@ public partial class MainWindow : Window
                 StatusText.Foreground = System.Windows.Media.Brushes.Red;
 
                 MessageBox.Show(
-                    resultMessage + "\n⚠️ 如预期，进程在释放后崩溃了。\n这就是为什么这个功能标记为"实验性"。",
+                    resultMessage + "\n⚠️ 如预期，进程在释放后崩溃了。\n这就是为什么这个功能标记为\"实验性\"。",
                     "进程崩溃",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
