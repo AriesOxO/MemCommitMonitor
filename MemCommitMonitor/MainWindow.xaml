@@ -107,6 +107,67 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- macOS 风格右键菜单 -->
+        <Style x:Key="MacContextMenu" TargetType="ContextMenu">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource MacOS.Divider}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Black" Opacity="0.12"
+                                                BlurRadius="16" ShadowDepth="4" Direction="270"/>
+                            </Border.Effect>
+                            <ItemsPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- macOS 风格菜单项 -->
+        <Style x:Key="MacMenuItem" TargetType="MenuItem">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="2,1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Border"
+                                Background="Transparent"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#FFE3F2FD"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- macOS 风格分隔线 -->
+        <Style x:Key="MacSeparator" TargetType="Separator">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource MacOS.Divider}"/>
+            <Setter Property="Margin" Value="8,6"/>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="24" Background="{StaticResource MacOS.Background}">
@@ -234,34 +295,29 @@
 
                 <!-- macOS 风格右键菜单 -->
                 <DataGrid.ContextMenu>
-                    <ContextMenu Background="White"
-                                BorderBrush="{StaticResource MacOS.Divider}"
-                                Padding="8">
-                        <ContextMenu.Resources>
-                            <Style TargetType="MenuItem">
-                                <Setter Property="FontSize" Value="13"/>
-                                <Setter Property="Padding" Value="12,8"/>
-                                <Setter Property="Margin" Value="0,2"/>
-                            </Style>
-                        </ContextMenu.Resources>
-
+                    <ContextMenu Style="{StaticResource MacContextMenu}">
                         <MenuItem Header="💾 释放工作集"
+                                 Style="{StaticResource MacMenuItem}"
                                  Click="ReleaseButton_Click"
                                  ToolTip="释放物理内存（不减少已提交内存）"/>
                         <MenuItem Header="⚠️ 终止进程"
+                                 Style="{StaticResource MacMenuItem}"
                                  Click="TerminateButton_Click"
                                  ToolTip="终止进程（真正释放已提交内存）"
                                  Foreground="{StaticResource MacOS.Red}"
                                  FontWeight="Medium"/>
                         <MenuItem Header="🧪 实验性释放"
+                                 Style="{StaticResource MacMenuItem}"
                                  Click="ExperimentalReleaseButton_Click"
                                  ToolTip="实验性功能，有崩溃风险"
                                  Foreground="{StaticResource MacOS.Orange}"
                                  FontWeight="Medium"/>
-                        <Separator Margin="0,8"/>
+                        <Separator Style="{StaticResource MacSeparator}"/>
                         <MenuItem Header="📋 查看进程详情"
+                                 Style="{StaticResource MacMenuItem}"
                                  Click="ViewProcessDetails_Click"/>
                         <MenuItem Header="🔄 刷新列表"
+                                 Style="{StaticResource MacMenuItem}"
                                  Click="RefreshButton_Click"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
