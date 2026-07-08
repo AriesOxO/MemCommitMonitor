@@ -63,6 +63,13 @@
                     Content="🔄 刷新"
                     Style="{StaticResource ActionButtonStyle}"
                     Click="RefreshButton_Click"/>
+            <CheckBox x:Name="HideSystemProcessCheckBox"
+                      Content="隐藏系统进程"
+                      VerticalAlignment="Center"
+                      Margin="15,0,0,0"
+                      Checked="FilterChanged"
+                      Unchecked="FilterChanged"
+                      ToolTip="只显示用户程序，隐藏系统关键进程"/>
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        Margin="15,0,0,0"
@@ -90,6 +97,17 @@
                       AlternatingRowBackground="#F5F5F5"
                       RowHeight="32"
                       FontSize="12">
+                <!-- 行样式：系统进程用浅灰色背景 -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProtected}" Value="True">
+                                <Setter Property="Background" Value="#FFE0E0E0"/>
+                                <Setter Property="Foreground" Value="#FF666666"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="💾 释放工作集"

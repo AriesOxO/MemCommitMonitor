@@ -47,9 +47,11 @@ public partial class MainWindow : Window
 
             // 加载进程列表
             _processes = _processAnalyzer.GetProcessMemoryInfos();
-            ProcessDataGrid.ItemsSource = _processes;
 
-            StatusText.Text = $"✓ 已加载 {_processes.Count} 个进程";
+            // 应用过滤和排序
+            ApplyFilterAndSort();
+
+            StatusText.Text = $"✓ 已加载 {ProcessDataGrid.Items.Count} 个进程（总计 {_processes.Count}）";
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             LastUpdateText.Text = $"最后更新: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
         }
@@ -81,6 +83,40 @@ public partial class MainWindow : Window
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         LoadData();
+    }
+
+    /// <summary>
+    /// 应用过滤和排序
+    /// </summary>
+    private void ApplyFilterAndSort()
+    {
+        var filteredProcesses = _processes.AsEnumerable();
+
+        // 应用过滤：隐藏系统进程
+        if (HideSystemProcessCheckBox?.IsChecked == true)
+        {
+            filteredProcesses = filteredProcesses.Where(p => !p.IsProtected);
+        }
+
+        // 排序：用户进程优先（IsProtected = false 排前面），然后按已提交内存降序
+        var sortedProcesses = filteredProcesses
+            .OrderBy(p => p.IsProtected)  // false (用户进程) 在前
+            .ThenByDescending(p => p.PrivateBytes)  // 按内存降序
+            .ToList();
+
+        ProcessDataGrid.ItemsSource = sortedProcesses;
+    }
+
+    /// <summary>
+    /// 过滤条件变化事件
+    /// </summary>
+    private void FilterChanged(object sender, RoutedEventArgs e)
+    {
+        if (_processes != null && _processes.Count > 0)
+        {
+            ApplyFilterAndSort();
+            StatusText.Text = $"✓ 显示 {ProcessDataGrid.Items.Count} 个进程（总计 {_processes.Count}）";
+        }
     }
 
     /// <summary>
