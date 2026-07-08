@@ -17,6 +17,9 @@ public partial class App : Application
         AppLogger.Initialize();
         AppLogger.Instance.Info("应用程序启动");
 
+        // 初始化配置系统
+        AppConfigManager.Initialize(AppLogger.Instance);
+
         // 设置全局异常处理
         SetupExceptionHandling();
 

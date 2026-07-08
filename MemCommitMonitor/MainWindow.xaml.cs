@@ -33,10 +33,53 @@ public partial class MainWindow : Window
         _memoryScanner = new MemoryScanner();
         _experimentalReleaser = new ExperimentalMemoryReleaser();
 
+        // 应用配置中的窗口设置
+        ApplyWindowSettings();
+
+        // 应用配置中的 UI 设置
+        ApplyUiSettings();
+
         // 启动时自动加载数据
         LoadData();
 
         _logger.Info("主窗口初始化完成");
+    }
+
+    /// <summary>
+    /// 应用窗口设置
+    /// </summary>
+    private void ApplyWindowSettings()
+    {
+        var config = AppConfigManager.Current;
+
+        if (config.UI.RememberWindowSize)
+        {
+            Width = config.UI.WindowWidth;
+            Height = config.UI.WindowHeight;
+
+            // 如果保存了窗口位置，恢复位置
+            if (!double.IsNaN(config.UI.WindowLeft) && !double.IsNaN(config.UI.WindowTop))
+            {
+                Left = config.UI.WindowLeft;
+                Top = config.UI.WindowTop;
+                WindowStartupLocation = WindowStartupLocation.Manual;
+            }
+
+            _logger.Debug($"恢复窗口大小: {Width}x{Height}");
+        }
+    }
+
+    /// <summary>
+    /// 应用 UI 设置
+    /// </summary>
+    private void ApplyUiSettings()
+    {
+        var config = AppConfigManager.Current;
+
+        // 应用隐藏系统进程的设置
+        HideSystemProcessCheckBox.IsChecked = config.Behavior.HideSystemProcesses;
+
+        _logger.Debug($"应用 UI 设置: 隐藏系统进程={config.Behavior.HideSystemProcesses}");
     }
 
     /// <summary>
@@ -550,8 +593,44 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        // 保存窗口设置到配置
+        SaveWindowSettings();
+
+        // 清理资源
         base.OnClosed(e);
         _memoryMonitor.Dispose();
+
+        _logger.Info("主窗口已关闭");
+    }
+
+    /// <summary>
+    /// 保存窗口设置
+    /// </summary>
+    private void SaveWindowSettings()
+    {
+        try
+        {
+            var config = AppConfigManager.Current;
+
+            if (config.UI.RememberWindowSize)
+            {
+                config.UI.WindowWidth = Width;
+                config.UI.WindowHeight = Height;
+                config.UI.WindowLeft = Left;
+                config.UI.WindowTop = Top;
+            }
+
+            // 保存复选框状态
+            config.Behavior.HideSystemProcesses = HideSystemProcessCheckBox.IsChecked == true;
+
+            AppConfigManager.Save();
+
+            _logger.Debug("窗口设置已保存");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("保存窗口设置失败", ex);
+        }
     }
 }
 
