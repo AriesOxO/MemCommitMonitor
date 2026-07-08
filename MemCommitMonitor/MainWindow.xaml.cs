@@ -13,6 +13,8 @@ public partial class MainWindow : Window
     private readonly MemoryMonitor _memoryMonitor;
     private readonly ProcessAnalyzer _processAnalyzer;
     private readonly MemoryReleaser _memoryReleaser;
+    private readonly MemoryScanner _memoryScanner;
+    private readonly ExperimentalMemoryReleaser _experimentalReleaser;
     private List<ProcessMemoryInfo> _processes = new();
 
     public MainWindow()
@@ -22,6 +24,8 @@ public partial class MainWindow : Window
         _memoryMonitor = new MemoryMonitor();
         _processAnalyzer = new ProcessAnalyzer();
         _memoryReleaser = new MemoryReleaser();
+        _memoryScanner = new MemoryScanner();
+        _experimentalReleaser = new ExperimentalMemoryReleaser();
 
         // 启动时自动加载数据
         LoadData();
@@ -86,6 +90,9 @@ public partial class MainWindow : Window
     {
         bool hasSelection = ProcessDataGrid.SelectedItem != null;
         ReleaseButton.IsEnabled = hasSelection;
+        TerminateButton.IsEnabled = hasSelection;
+        ExperimentalReleaseButton.IsEnabled = hasSelection;
+    }
         TerminateButton.IsEnabled = hasSelection;
     }
 
@@ -260,6 +267,195 @@ public partial class MainWindow : Window
             StatusText.Text = $"✗ 错误: {ex.Message}";
             StatusText.Foreground = System.Windows.Media.Brushes.Red;
             MessageBox.Show($"终止进程时出错:\n{ex.Message}", "错误",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 实验性释放按钮点击事件（Phase 3）
+    /// </summary>
+    private void ExperimentalReleaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProcessDataGrid.SelectedItem is not ProcessMemoryInfo selectedProcess)
+            return;
+
+        // 检查是否为受保护进程
+        if (selectedProcess.IsProtected)
+        {
+            MessageBox.Show(
+                $"进程 \"{selectedProcess.ProcessName}\" 是系统关键进程，不允许实验性操作。",
+                "操作被拒绝",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        // 第一次警告：说明风险
+        var warning1 = MessageBox.Show(
+            "🧪 实验性功能警告\n\n" +
+            "您即将使用 VirtualFreeEx 实验性内存释放功能。\n\n" +
+            "⚠️ 极度危险：\n" +
+            "• 可能导致目标进程立即崩溃（50%+ 概率）\n" +
+            "• 可能导致数据损坏\n" +
+            "• 成功率很低（10-30%）\n" +
+            "• 即使成功，释放量也可能很少\n\n" +
+            "此功能仅供研究和学习使用。\n" +
+            "如果需要可靠释放内存，请使用"终止进程"功能。\n\n" +
+            "是否继续？",
+            "⚠️ 实验性功能警告",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (warning1 != MessageBoxResult.Yes)
+            return;
+
+        // 第二次：扫描内存并显示结果
+        StatusText.Text = "正在扫描进程内存...";
+        StatusText.Foreground = System.Windows.Media.Brushes.Blue;
+
+        MemoryScanResult scanResult;
+        try
+        {
+            scanResult = _memoryScanner.ScanProcessMemory(selectedProcess.ProcessId);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "✗ 扫描失败";
+            StatusText.Foreground = System.Windows.Media.Brushes.Red;
+            MessageBox.Show($"扫描进程内存失败:\n{ex.Message}", "错误",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        StatusText.Text = "扫描完成";
+        StatusText.Foreground = System.Windows.Media.Brushes.Green;
+
+        // 显示扫描结果
+        var scanInfo = $"内存扫描结果：\n\n" +
+            $"进程: {scanResult.ProcessName} (PID: {scanResult.ProcessId})\n" +
+            $"内存区域数: {scanResult.Regions.Count}\n" +
+            $"已提交内存: {FormatBytes(scanResult.TotalCommitted)}\n\n" +
+            $"可释放评估：\n" +
+            $"• 低风险（安全）: {FormatBytes(scanResult.SafeToRelease)}\n" +
+            $"• 中风险（谨慎）: {FormatBytes(scanResult.RiskyToRelease)}\n" +
+            $"• 高风险（危险）: {FormatBytes(scanResult.TotalCommitted - scanResult.SafeToRelease - scanResult.RiskyToRelease)}\n\n" +
+            $"扫描耗时: {scanResult.ScanTimeMs} ms\n\n" +
+            "选择释放模式：";
+
+        // 让用户选择释放模式
+        var modeDialog = MessageBox.Show(
+            scanInfo +
+            "\n是（Yes）= 保守模式（只释放低风险）" +
+            "\n否（No）= 取消操作" +
+            "\n\n推荐：如果低风险为 0，建议取消",
+            "选择释放模式",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question,
+            MessageBoxResult.Cancel);
+
+        if (modeDialog == MessageBoxResult.Cancel || modeDialog == MessageBoxResult.No)
+        {
+            StatusText.Text = "已取消";
+            StatusText.Foreground = System.Windows.Media.Brushes.Gray;
+            return;
+        }
+
+        // 确定释放模式
+        bool useConservative = modeDialog == MessageBoxResult.Yes;
+
+        // 第三次最终确认
+        var confirm = MessageBox.Show(
+            $"最终确认\n\n" +
+            $"进程: {selectedProcess.ProcessName}\n" +
+            $"模式: {(useConservative ? "保守模式（风险 ≤ 20）" : "平衡模式（风险 ≤ 40）")}\n" +
+            $"预计释放: {(useConservative ? FormatBytes(scanResult.SafeToRelease) : FormatBytes(scanResult.SafeToRelease + scanResult.RiskyToRelease))}\n\n" +
+            "再次提醒：\n" +
+            "• 进程可能崩溃\n" +
+            "• 数据可能损坏\n" +
+            "• 无法撤销\n\n" +
+            "确定执行吗？",
+            "最终确认",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Stop,
+            MessageBoxResult.No);
+
+        if (confirm != MessageBoxResult.Yes)
+        {
+            StatusText.Text = "已取消";
+            StatusText.Foreground = System.Windows.Media.Brushes.Gray;
+            return;
+        }
+
+        // 执行释放
+        StatusText.Text = "正在执行实验性释放...";
+        StatusText.Foreground = System.Windows.Media.Brushes.Orange;
+
+        try
+        {
+            MemoryReleaseResult releaseResult = useConservative
+                ? _experimentalReleaser.ReleaseMemoryConservative(selectedProcess.ProcessId)
+                : _experimentalReleaser.ReleaseMemoryBalanced(selectedProcess.ProcessId);
+
+            // 显示结果
+            string resultMessage = $"实验性释放结果：\n\n" +
+                $"尝试释放: {releaseResult.RegionsAttempted} 个区域\n" +
+                $"成功释放: {releaseResult.RegionsReleased} 个区域\n" +
+                $"释放字节: {FormatBytes(releaseResult.BytesReleased)}\n" +
+                $"进程状态: {(releaseResult.ProcessCrashed ? "❌ 已崩溃" : "✅ 仍在运行")}\n\n";
+
+            if (releaseResult.Errors.Any())
+            {
+                resultMessage += $"错误数量: {releaseResult.Errors.Count}\n";
+                resultMessage += "前3个错误:\n";
+                foreach (var error in releaseResult.Errors.Take(3))
+                {
+                    resultMessage += $"• {error}\n";
+                }
+            }
+
+            if (releaseResult.Success && !releaseResult.ProcessCrashed)
+            {
+                StatusText.Text = $"✓ 释放了 {FormatBytes(releaseResult.BytesReleased)}";
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+
+                MessageBox.Show(
+                    resultMessage,
+                    "释放成功",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else if (releaseResult.ProcessCrashed)
+            {
+                StatusText.Text = "✗ 进程已崩溃";
+                StatusText.Foreground = System.Windows.Media.Brushes.Red;
+
+                MessageBox.Show(
+                    resultMessage + "\n⚠️ 如预期，进程在释放后崩溃了。\n这就是为什么这个功能标记为"实验性"。",
+                    "进程崩溃",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            else
+            {
+                StatusText.Text = "⚠️ 释放部分成功";
+                StatusText.Foreground = System.Windows.Media.Brushes.Orange;
+
+                MessageBox.Show(
+                    resultMessage,
+                    "释放完成（有错误）",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            // 刷新数据
+            LoadData();
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"✗ 错误: {ex.Message}";
+            StatusText.Foreground = System.Windows.Media.Brushes.Red;
+            MessageBox.Show($"实验性释放失败:\n{ex.Message}", "错误",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

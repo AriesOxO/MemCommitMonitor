@@ -76,6 +76,13 @@
                     IsEnabled="False"
                     Background="#FFE57373"
                     ToolTip="终止进程（真正释放已提交内存，会丢失数据）"/>
+            <Button x:Name="ExperimentalReleaseButton"
+                    Content="🧪 实验性释放"
+                    Style="{StaticResource ActionButtonStyle}"
+                    Click="ExperimentalReleaseButton_Click"
+                    IsEnabled="False"
+                    Background="#FFFFB74D"
+                    ToolTip="实验性 VirtualFreeEx（极度危险，50%+崩溃风险）"/>
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        Margin="15,0,0,0"
