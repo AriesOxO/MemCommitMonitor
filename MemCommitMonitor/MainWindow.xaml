@@ -5,8 +5,16 @@
         Height="720" Width="1200"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
-        Background="#FFF5F5F7">
+        Background="#FFF5F5F7"
+        Icon="{StaticResource AppLogoSmall}">
+
+    <!-- 合并 Logo 资源 -->
     <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Logo.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
         <!-- macOS 风格颜色系统 -->
         <SolidColorBrush x:Key="MacOS.Background" Color="#FFF5F5F7"/>
         <SolidColorBrush x:Key="MacOS.Card" Color="#FFFFFFFF"/>
@@ -168,6 +176,7 @@
             <Setter Property="Background" Value="{StaticResource MacOS.Divider}"/>
             <Setter Property="Margin" Value="8,6"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="24" Background="{StaticResource MacOS.Background}">
