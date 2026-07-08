@@ -241,6 +241,17 @@
                        Orientation="Horizontal"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Center">
+                <!-- 权限状态指示器 -->
+                <Border x:Name="PrivilegeStatusBorder"
+                        Background="#FFF0F0F0"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        Margin="0,0,12,0">
+                    <TextBlock x:Name="PrivilegeStatusText"
+                              Style="{StaticResource MacCaptionStyle}"
+                              Foreground="#FF6C6C70"
+                              FontSize="11"/>
+                </Border>
                 <TextBlock x:Name="StatusText"
                           Style="{StaticResource MacBodyStyle}"
                           Foreground="{StaticResource MacOS.Green}"

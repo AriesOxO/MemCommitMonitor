@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using MemCommitMonitor.Services;
 using MemCommitMonitor.Dialogs;
+using MemCommitMonitor.Utils;
 
 namespace MemCommitMonitor;
 
@@ -24,6 +25,60 @@ public partial class App : Application
         SetupExceptionHandling();
 
         AppLogger.Instance.Info("全局异常处理已配置");
+
+        // 检查管理员权限
+        CheckAdminPrivileges();
+    }
+
+    /// <summary>
+    /// 检查管理员权限
+    /// </summary>
+    private void CheckAdminPrivileges()
+    {
+        var isAdmin = PrivilegeManager.IsRunningAsAdmin();
+        var config = AppConfigManager.Current;
+
+        if (!isAdmin && config.Advanced.PromptForAdmin)
+        {
+            AppLogger.Instance.Warning("程序以标准用户权限运行");
+
+            // 显示权限提示对话框
+            var result = MacDialog.Show(
+                "管理员权限",
+                "检测到程序正在以标准用户权限运行。\n\n" +
+                "某些功能可能需要管理员权限才能使用：\n" +
+                "• 终止受保护的进程\n" +
+                "• 实验性内存释放功能\n" +
+                "• 某些系统进程的内存操作\n\n" +
+                "是否要以管理员身份重启程序？",
+                MacDialog.DialogIcon.Question,
+                MacDialog.DialogButton.YesNo,
+                null
+            );
+
+            if (result == true)
+            {
+                AppLogger.Instance.Info("用户选择以管理员身份重启");
+
+                if (PrivilegeManager.RestartAsAdmin())
+                {
+                    // 成功启动新进程，关闭当前进程
+                    Shutdown();
+                }
+                else
+                {
+                    AppLogger.Instance.Warning("权限提升失败或被用户取消");
+                }
+            }
+            else
+            {
+                AppLogger.Instance.Info("用户选择继续以标准用户权限运行");
+            }
+        }
+        else if (isAdmin)
+        {
+            AppLogger.Instance.Info("程序以管理员权限运行");
+        }
     }
 
     private void SetupExceptionHandling()

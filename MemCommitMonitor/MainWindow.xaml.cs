@@ -2,11 +2,13 @@ using MemCommitMonitor.Core;
 using MemCommitMonitor.Models;
 using MemCommitMonitor.Dialogs;
 using MemCommitMonitor.Services;
+using MemCommitMonitor.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace MemCommitMonitor;
 
@@ -39,10 +41,37 @@ public partial class MainWindow : Window
         // 应用配置中的 UI 设置
         ApplyUiSettings();
 
+        // 更新权限状态显示
+        UpdatePrivilegeStatus();
+
         // 启动时自动加载数据
         LoadData();
 
         _logger.Info("主窗口初始化完成");
+    }
+
+    /// <summary>
+    /// 更新权限状态显示
+    /// </summary>
+    private void UpdatePrivilegeStatus()
+    {
+        var isAdmin = PrivilegeManager.IsRunningAsAdmin();
+        var statusText = PrivilegeManager.GetPrivilegeStatus();
+
+        PrivilegeStatusText.Text = statusText;
+
+        if (isAdmin)
+        {
+            PrivilegeStatusBorder.Background = new SolidColorBrush(Color.FromRgb(209, 250, 229)); // 浅绿色
+            PrivilegeStatusText.Foreground = new SolidColorBrush(Color.FromRgb(21, 128, 61)); // 深绿色
+        }
+        else
+        {
+            PrivilegeStatusBorder.Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)); // 浅黄色
+            PrivilegeStatusText.Foreground = new SolidColorBrush(Color.FromRgb(161, 98, 7)); // 深黄色
+        }
+
+        _logger.Debug($"权限状态: {statusText}");
     }
 
     /// <summary>
@@ -272,15 +301,22 @@ public partial class MainWindow : Window
         if (ProcessDataGrid.SelectedItem is not ProcessMemoryInfo selectedProcess)
             return;
 
+        // 检查权限
+        if (!PrivilegeManager.CheckPermissionForOperation("终止进程"))
+        {
+            _logger.Warning($"尝试终止进程但权限不足: {selectedProcess.ProcessName} (PID: {selectedProcess.ProcessId})");
+        }
+
         // 检查是否为受保护进程
         if (selectedProcess.IsProtected)
         {
-            MessageBox.Show(
+            MacDialog.Show(
+                "操作被拒绝",
                 $"进程 \"{selectedProcess.ProcessName}\" 是系统关键进程，不允许终止。\n\n" +
                 "终止系统进程会导致系统崩溃。",
-                "操作被拒绝",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MacDialog.DialogIcon.Error,
+                MacDialog.DialogButton.OK,
+                this);
             return;
         }
 
