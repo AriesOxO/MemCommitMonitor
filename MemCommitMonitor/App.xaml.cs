@@ -21,6 +21,9 @@ public partial class App : Application
         // 初始化配置系统
         AppConfigManager.Initialize(AppLogger.Instance);
 
+        // 初始化性能监控系统
+        AppPerformanceMonitor.Initialize(AppLogger.Instance);
+
         // 设置全局异常处理
         SetupExceptionHandling();
 

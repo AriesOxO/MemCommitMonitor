@@ -116,37 +116,49 @@ public partial class MainWindow : Window
     /// </summary>
     private void LoadData()
     {
-        try
+        using (AppPerformanceMonitor.Instance.Measure("LoadData"))
         {
-            _logger.Debug("开始加载数据");
-            StatusText.Text = "正在加载数据...";
-            StatusText.Foreground = System.Windows.Media.Brushes.Blue;
+            try
+            {
+                _logger.Debug("开始加载数据");
+                StatusText.Text = "正在加载数据...";
+                StatusText.Foreground = System.Windows.Media.Brushes.Blue;
 
-            // 加载系统内存信息
-            var sysInfo = _memoryMonitor.GetSystemMemoryInfo();
-            UpdateSystemMemoryDisplay(sysInfo);
-            _logger.Debug($"系统内存: 已提交 {sysInfo.TotalCommitted / 1024 / 1024 / 1024:F2} GB");
+                // 加载系统内存信息
+                using (AppPerformanceMonitor.Instance.Measure("GetSystemMemoryInfo"))
+                {
+                    var sysInfo = _memoryMonitor.GetSystemMemoryInfo();
+                    UpdateSystemMemoryDisplay(sysInfo);
+                    _logger.Debug($"系统内存: 已提交 {sysInfo.TotalCommitted / 1024 / 1024 / 1024:F2} GB");
+                }
 
-            // 加载进程列表
-            _processes = _processAnalyzer.GetProcessMemoryInfos();
-            _logger.Debug($"加载了 {_processes.Count} 个进程");
+                // 加载进程列表
+                using (AppPerformanceMonitor.Instance.Measure("GetProcessMemoryInfos"))
+                {
+                    _processes = _processAnalyzer.GetProcessMemoryInfos();
+                    _logger.Debug($"加载了 {_processes.Count} 个进程");
+                }
 
-            // 应用过滤和排序
-            ApplyFilterAndSort();
+                // 应用过滤和排序
+                using (AppPerformanceMonitor.Instance.Measure("ApplyFilterAndSort"))
+                {
+                    ApplyFilterAndSort();
+                }
 
-            StatusText.Text = $"✓ 已加载 {ProcessDataGrid.Items.Count} 个进程（总计 {_processes.Count}）";
-            StatusText.Foreground = System.Windows.Media.Brushes.Green;
-            LastUpdateText.Text = $"最后更新: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                StatusText.Text = $"✓ 已加载 {ProcessDataGrid.Items.Count} 个进程（总计 {_processes.Count}）";
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                LastUpdateText.Text = $"最后更新: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
 
-            _logger.Info($"数据加载成功，显示 {ProcessDataGrid.Items.Count}/{_processes.Count} 个进程");
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("加载数据失败", ex);
-            StatusText.Text = $"✗ 加载失败: {ex.Message}";
-            StatusText.Foreground = System.Windows.Media.Brushes.Red;
-            MacDialog.Show("加载失败", $"加载数据时出错:\n{ex.Message}",
-                MacDialog.DialogIcon.Error, MacDialog.DialogButton.OK, this);
+                _logger.Info($"数据加载成功，显示 {ProcessDataGrid.Items.Count}/{_processes.Count} 个进程");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("加载数据失败", ex);
+                StatusText.Text = $"✗ 加载失败: {ex.Message}";
+                StatusText.Foreground = System.Windows.Media.Brushes.Red;
+                MacDialog.Show("加载失败", $"加载数据时出错:\n{ex.Message}",
+                    MacDialog.DialogIcon.Error, MacDialog.DialogButton.OK, this);
+            }
         }
     }
 
@@ -256,18 +268,22 @@ public partial class MainWindow : Window
             StatusText.Text = "正在释放内存...";
             StatusText.Foreground = System.Windows.Media.Brushes.Blue;
 
-            var (before, after, success) = _memoryReleaser.ReleaseProcessMemory(selectedProcess);
-
-            if (success)
+            (long before, long after, bool success) releaseResult;
+            using (AppPerformanceMonitor.Instance.Measure("ReleaseProcessMemory"))
             {
-                long released = before - after;
+                releaseResult = _memoryReleaser.ReleaseProcessMemory(selectedProcess);
+            }
+
+            if (releaseResult.success)
+            {
+                long released = releaseResult.before - releaseResult.after;
                 StatusText.Text = $"✓ 已释放 {FormatBytes(released)}";
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
 
                 MessageBox.Show(
                     $"释放成功!\n\n" +
-                    $"释放前: {FormatBytes(before)}\n" +
-                    $"释放后: {FormatBytes(after)}\n" +
+                    $"释放前: {FormatBytes(releaseResult.before)}\n" +
+                    $"释放后: {FormatBytes(releaseResult.after)}\n" +
                     $"释放量: {FormatBytes(released)}",
                     "操作成功",
                     MessageBoxButton.OK,
@@ -629,6 +645,10 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        // 输出性能报告
+        var performanceReport = AppPerformanceMonitor.Instance.GenerateReport();
+        _logger.Info("性能监控报告:\n" + performanceReport);
+
         // 保存窗口设置到配置
         SaveWindowSettings();
 
