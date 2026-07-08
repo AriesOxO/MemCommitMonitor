@@ -44,10 +44,38 @@ public partial class MainWindow : Window
         // 更新权限状态显示
         UpdatePrivilegeStatus();
 
+        // 初始化托盘图标
+        InitializeTrayIcon();
+
         // 启动时自动加载数据
         LoadData();
 
         _logger.Info("主窗口初始化完成");
+    }
+
+    /// <summary>
+    /// 初始化托盘图标
+    /// </summary>
+    private void InitializeTrayIcon()
+    {
+        AppTrayIcon.Initialize(_logger, this);
+
+        // 监听窗口状态变化
+        StateChanged += OnWindowStateChanged;
+    }
+
+    /// <summary>
+    /// 窗口状态变化事件
+    /// </summary>
+    private void OnWindowStateChanged(object? sender, EventArgs e)
+    {
+        var config = AppConfigManager.Current;
+
+        // 如果启用了最小化到托盘，并且窗口被最小化
+        if (config.UI.MinimizeToTray && WindowState == WindowState.Minimized)
+        {
+            AppTrayIcon.Instance?.HideMainWindow();
+        }
     }
 
     /// <summary>
@@ -114,7 +142,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// 加载系统和进程数据
     /// </summary>
-    private void LoadData()
+    public void LoadData()
     {
         using (AppPerformanceMonitor.Instance.Measure("LoadData"))
         {
@@ -651,6 +679,9 @@ public partial class MainWindow : Window
 
         // 保存窗口设置到配置
         SaveWindowSettings();
+
+        // 清理托盘图标
+        AppTrayIcon.Instance?.Dispose();
 
         // 清理资源
         base.OnClosed(e);
