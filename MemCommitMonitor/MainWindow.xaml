@@ -259,7 +259,18 @@
                           Margin="0,0,16,0"/>
                 <TextBlock Text="💡 右键点击进程查看操作"
                           Style="{StaticResource MacCaptionStyle}"
-                          VerticalAlignment="Center"/>
+                          VerticalAlignment="Center"
+                          Margin="0,0,12,0"/>
+                <!-- 检查更新按钮 -->
+                <Button Content="🔄"
+                        Click="CheckUpdateButton_Click"
+                        ToolTip="检查更新"
+                        Padding="8,4"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Foreground="{StaticResource MacOS.Blue}"
+                        Cursor="Hand"
+                        FontSize="14"/>
             </StackPanel>
         </Grid>
 

@@ -719,6 +719,92 @@ public partial class MainWindow : Window
             _logger.Error("保存窗口设置失败", ex);
         }
     }
+
+    /// <summary>
+    /// 检查更新按钮点击事件
+    /// </summary>
+    private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.Info("用户手动检查更新");
+
+            StatusText.Text = "正在检查更新...";
+            StatusText.Foreground = Brushes.Blue;
+
+            using (AppPerformanceMonitor.Instance.Measure("CheckForUpdates"))
+            {
+                var updateInfo = await AppUpdateChecker.Instance.CheckForUpdatesAsync();
+
+                if (updateInfo.HasUpdate)
+                {
+                    StatusText.Text = $"✓ 发现新版本 v{updateInfo.LatestVersion}";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 149, 0)); // 橙色
+
+                    var message = $"发现新版本：v{updateInfo.LatestVersion}\n" +
+                                 $"当前版本：v{updateInfo.CurrentVersion}\n\n";
+
+                    if (!string.IsNullOrEmpty(updateInfo.ReleaseName))
+                    {
+                        message += $"版本名称：{updateInfo.ReleaseName}\n";
+                    }
+
+                    if (updateInfo.PublishedAt.HasValue)
+                    {
+                        message += $"发布时间：{updateInfo.PublishedAt.Value:yyyy-MM-dd HH:mm}\n";
+                    }
+
+                    message += "\n是否访问下载页面？";
+
+                    var result = MacDialog.Show(
+                        "发现新版本 🎉",
+                        message,
+                        MacDialog.DialogIcon.Info,
+                        MacDialog.DialogButton.YesNo,
+                        this
+                    );
+
+                    if (result == true && !string.IsNullOrEmpty(updateInfo.DownloadUrl))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = updateInfo.DownloadUrl,
+                            UseShellExecute = true
+                        });
+
+                        _logger.Info("已打开下载页面");
+                    }
+                }
+                else
+                {
+                    StatusText.Text = "✓ 当前已是最新版本";
+                    StatusText.Foreground = Brushes.Green;
+
+                    MacDialog.Show(
+                        "检查更新",
+                        $"当前版本：v{updateInfo.CurrentVersion}\n\n您已使用最新版本！",
+                        MacDialog.DialogIcon.Info,
+                        MacDialog.DialogButton.OK,
+                        this
+                    );
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("检查更新失败", ex);
+            StatusText.Text = "✗ 检查更新失败";
+            StatusText.Foreground = Brushes.Red;
+
+            MacDialog.Show(
+                "检查更新失败",
+                $"无法连接到更新服务器。\n\n请检查网络连接或稍后再试。\n\n错误详情：{ex.Message}",
+                MacDialog.DialogIcon.Error,
+                MacDialog.DialogButton.OK,
+                this
+            );
+        }
+    }
 }
 
 

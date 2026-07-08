@@ -24,6 +24,9 @@ public partial class App : Application
         // 初始化性能监控系统
         AppPerformanceMonitor.Initialize(AppLogger.Instance);
 
+        // 初始化更新检查器
+        AppUpdateChecker.Initialize(AppLogger.Instance);
+
         // 设置全局异常处理
         SetupExceptionHandling();
 
@@ -31,6 +34,84 @@ public partial class App : Application
 
         // 检查管理员权限
         CheckAdminPrivileges();
+
+        // 启动后台更新检查（延迟3秒，不阻塞启动）
+        StartBackgroundUpdateCheck();
+    }
+
+    /// <summary>
+    /// 启动后台更新检查
+    /// </summary>
+    private async void StartBackgroundUpdateCheck()
+    {
+        var config = AppConfigManager.Current;
+
+        // 如果禁用了更新检查，则跳过
+        if (!config.Advanced.CheckForUpdates)
+        {
+            AppLogger.Instance.Info("自动更新检查已禁用");
+            return;
+        }
+
+        try
+        {
+            // 延迟3秒，避免影响启动速度
+            await Task.Delay(3000);
+
+            AppLogger.Instance.Info("开始后台更新检查");
+
+            var updateInfo = await AppUpdateChecker.Instance.CheckForUpdatesAsync();
+
+            if (updateInfo.HasUpdate)
+            {
+                // 在 UI 线程显示更新通知
+                Dispatcher.Invoke(() => ShowUpdateNotification(updateInfo));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Instance.Error("后台更新检查失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 显示更新通知
+    /// </summary>
+    private void ShowUpdateNotification(UpdateInfo updateInfo)
+    {
+        AppLogger.Instance.Info($"显示更新通知: v{updateInfo.LatestVersion}");
+
+        var message = $"发现新版本：v{updateInfo.LatestVersion}\n" +
+                     $"当前版本：v{updateInfo.CurrentVersion}\n\n" +
+                     $"发布时间：{updateInfo.PublishedAt:yyyy-MM-dd}\n\n" +
+                     $"是否访问下载页面？";
+
+        var result = Dialogs.MacDialog.Show(
+            "发现新版本",
+            message,
+            Dialogs.MacDialog.DialogIcon.Info,
+            Dialogs.MacDialog.DialogButton.YesNo,
+            Current.MainWindow
+        );
+
+        if (result == true && !string.IsNullOrEmpty(updateInfo.DownloadUrl))
+        {
+            // 打开浏览器访问下载页面
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = updateInfo.DownloadUrl,
+                    UseShellExecute = true
+                });
+
+                AppLogger.Instance.Info("已打开下载页面");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Instance.Error("打开下载页面失败", ex);
+            }
+        }
     }
 
     /// <summary>
